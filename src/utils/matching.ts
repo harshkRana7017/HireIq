@@ -1,4 +1,5 @@
 import { MatchAnalysis, Job } from '../types';
+import OpenAI from "openai";
 
 /**
  * Normalizes text to help with simple keyword matching
@@ -11,24 +12,30 @@ function cleanText(text: string): string[] {
     .filter(word => word.length > 2);
 }
 
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+
+
+
 /**
  * Abstracted matching algorithm that compares raw resume text with a Job object.
  * Returns a robust score percentage, matches/unmatched skills lists, and a brief report.
  */
-export function calculateMatchPercentage(
+export async function calculateMatchPercentage(
   resumeText: string,
   job: Job
-): {
+): Promise<{
   percentage: number;
   category: 'low' | 'moderate' | 'high';
   analysis: MatchAnalysis;
-} {
+}> {
   // If resume text is empty, fall back to safe placeholder defaults (e.g. 90% as requested)
   if (!resumeText || resumeText.trim().length === 0) {
     const halfLen = Math.ceil(job.skills.length / 2);
     const matchedSkills = job.skills.slice(0, halfLen);
     const missingSkills = job.skills.slice(halfLen);
-    
+
     return {
       percentage: 90,
       category: 'high',
@@ -48,7 +55,7 @@ export function calculateMatchPercentage(
   job.skills.forEach(skill => {
     const skillLower = skill.toLowerCase();
     // Support multi-word skills like "react native" or simple words
-    const isMatched = skillLower.split(' ').every(part => 
+    const isMatched = skillLower.split(' ').every(part =>
       resumeWords.some(word => word.includes(part) || part.includes(word))
     );
 
@@ -61,34 +68,22 @@ export function calculateMatchPercentage(
 
   // Calculate percentage of skills matched
   let percentage = 0;
-  if (job.skills.length > 0) {
-    const rawRatio = matchedSkills.length / job.skills.length;
-    // Base percentage has a floor of 25% and ceiling of 98% if text exists to make it look realistic
-    percentage = Math.round(25 + rawRatio * 73);
-  } else {
-    percentage = 90; // Default placeholder
-  }
-
-  // Ensure percentage stays between 0 and 100
-  percentage = Math.max(0, Math.min(100, percentage));
-
   let category: 'low' | 'moderate' | 'high' = 'moderate';
-  if (percentage < 50) {
-    category = 'low';
-  } else if (percentage >= 80) {
-    category = 'high';
-  }
-
-  // Generate dynamic AI-style summary
   let summary = '';
-  if (category === 'high') {
-    summary = `Excellent fit! The candidate has verified experience with vital core skills like ${matchedSkills.slice(0, 3).join(', ')}. Perfect alignment for the ${job.title} role.`;
-  } else if (category === 'moderate') {
-    summary = `Good potential match. Strong alignment on ${matchedSkills.slice(0, 2).join(', ')} but could use development or training in ${missingSkills.slice(0, 2).join(', ') || 'additional platform toolings'}.`;
-  } else {
-    summary = `Limited alignment on primary technical requirements. Significant caps in key areas like ${missingSkills.slice(0, 3).join(', ')}. Recommend testing alternative competencies.`;
-  }
-
+  const analysis = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [
+      {
+        role: "system",
+        content: "Analyze this resume against the job description. Return a JSON with keys: percentage, category, summary. the category can only be 'low'- if percentage less that 50, 'moderate'- if percentage between 50 and 80, or 'high'- if percentage greater than 80"
+      },
+      { role: "user", content: `Resume: ${resumeText}\n\nJob: ${JSON.stringify(job)}` }
+    ]
+  });
+  percentage = JSON.parse(analysis.choices[0].message.content || '{}').percentage;
+  category = JSON.parse(analysis.choices[0].message.content || '{}').category;
+  summary = JSON.parse(analysis.choices[0].message.content || '{}').summary;
+  console.log(percentage, category, summary, "demo");
   return {
     percentage,
     category,

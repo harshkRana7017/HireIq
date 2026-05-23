@@ -65,10 +65,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const totalJobs = jobs.length;
     const totalApplications = applications.length;
-    
+
     const totalMatchRate = applications.reduce((sum, app) => sum + app.matchPercentage, 0);
     const averageMatchRate = totalApplications > 0 ? Math.round(totalMatchRate / totalApplications) : 0;
-    
+
     const highMatchCount = applications.filter(app => app.matchCategory === 'high').length;
 
     setStats({
@@ -105,17 +105,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setJobs(prev => [newJob, ...prev]);
   };
 
-  const addApplication = (
+  const addApplication = async (
     jobId: string,
     candidateName: string,
     candidateEmail: string,
     resumeFileName: string,
     resumeText: string
-  ): Application => {
+  ): Promise<Application> => {
     const matchedJob = jobs.find(j => j.id === jobId) || jobs[0];
-    
+
     // Calculate match percentage dynamically
-    const { percentage, category, analysis } = calculateMatchPercentage(resumeText, matchedJob);
+    const { percentage, category, analysis } = await calculateMatchPercentage(resumeText, matchedJob);
 
     const newApp: Application = {
       id: `app-${Date.now()}`,

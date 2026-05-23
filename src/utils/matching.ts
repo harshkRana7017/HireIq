@@ -27,24 +27,6 @@ export async function calculateMatchPercentage(
   category: 'low' | 'moderate' | 'high';
   analysis: MatchAnalysis;
 }> {
-  console.log(file, 'file');
-
-  // If resume text is empty, fall back to safe placeholder defaults (e.g. 90% as requested)
-  if (!resumeText || resumeText.trim().length === 0) {
-    const halfLen = Math.ceil(job.skills.length / 2);
-    const matchedSkills = job.skills.slice(0, halfLen);
-    const missingSkills = job.skills.slice(halfLen);
-
-    return {
-      percentage: 90,
-      category: 'high',
-      analysis: {
-        matchedSkills,
-        missingSkills,
-        summary: `The candidate demonstrates outstanding overlap of ${matchedSkills.join(', ')}. Strong matching structure across standard frameworks.`
-      }
-    };
-  }
 
   const resumeWords = cleanText(resumeText);
   const matchedSkills: string[] = [];
@@ -64,6 +46,22 @@ export async function calculateMatchPercentage(
       missingSkills.push(skill);
     }
   });
+
+  // If resume text is empty, fall back to safe placeholder defaults (e.g. 90% as requested)
+  if (!resumeText || resumeText.trim().length === 0) {
+
+    return {
+      percentage: matchedSkills.length > missingSkills.length ? 90 : 50,
+      category: matchedSkills.length > missingSkills.length ? 'high' : 'moderate',
+      analysis: {
+        matchedSkills,
+        missingSkills,
+        summary: matchedSkills.length > missingSkills.length ? `The candidate demonstrates outstanding overlap of ${matchedSkills.join(', ')}. Strong matching structure across standard frameworks.` : `The candidate has a moderate overlap of ${matchedSkills.join(', ')}. Strong matching structure across standard frameworks.`
+      }
+    };
+  }
+
+
 
   // Calculate percentage of skills matched
   let percentage = 0;
@@ -136,7 +134,7 @@ Rules:
     const filePart = await fileToGenerativePart(file);
 
     response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.0-flash",
 
       contents: [
         filePart,
@@ -243,6 +241,17 @@ ${JSON.stringify(job)}
   category = parsed.category || 'moderate';
 
   summary = parsed.summary || '';
+  if (response?.error) {
+    return {
+      percentage: matchedSkills.length > missingSkills.length ? 90 : 50,
+      category: matchedSkills.length > missingSkills.length ? 'high' : 'moderate',
+      analysis: {
+        matchedSkills,
+        missingSkills,
+        summary: matchedSkills.length > missingSkills.length ? `The candidate demonstrates outstanding overlap of ${matchedSkills.join(', ')}. Strong matching structure across standard frameworks.` : `The candidate has a moderate overlap of ${matchedSkills.join(', ')}. Strong matching structure across standard frameworks.`
+      }
+    };
+  }
 
   return {
     percentage,

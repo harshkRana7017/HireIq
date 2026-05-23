@@ -76,6 +76,7 @@ Analyze the uploaded resume against the provided job description and determine h
 
 Be slightly lenient toward candidates with strong fundamentals, transferable skills, relevant projects, or good growth potential, but do not overrate clearly weak or irrelevant profiles.
 If they have relevant experiece and skill they should match atleast moderately, if they have more to offer match them higher like above 80.
+the summary should be brief and simple nto too long, just 2-3 lines.
 Focus on:
 - relevant skills
 - practical experience

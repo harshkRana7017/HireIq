@@ -36,7 +36,9 @@ export const CandidateDashboard: React.FC = () => {
   // Filter applications submitted by current logged-in user
   const myApplications = applications.filter(app => app.candidateEmail === currentUser.email);
 
-  const handleResumeMatchComplete = async (fileName: string, rawText: string, file: File) => {
+  const handleResumeMatchComplete = async (fileName: string, rawText: string, file?: File) => {
+
+    console.log(file, "fille 3")
     if (!selectedJob) return;
 
     // Trigger application context logic which calculates match indexes immediately

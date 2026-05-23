@@ -41,6 +41,7 @@ export interface Application {
   matchAnalysis: MatchAnalysis;
   appliedDate: string;
   status: 'New' | 'Reviewing' | 'Interviewing' | 'Accepted' | 'Declined';
+
 }
 
 export interface DashboardStats {

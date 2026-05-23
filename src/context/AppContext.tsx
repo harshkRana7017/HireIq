@@ -18,7 +18,7 @@ interface AppContextType {
     candidateEmail: string,
     resumeFileName: string,
     resumeText: string,
-    file: File,
+    file?: File,
   ) => Application;
   updateApplicationStatus: (appId: string, status: Application['status']) => void;
   deleteJob: (jobId: string) => void;
@@ -116,14 +116,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     candidateName: string,
     candidateEmail: string,
     resumeFileName: string,
-    resumeText: string
+    resumeText: string,
+    file?: File
   ): Promise<Application> => {
     setAnalyzing(true);
     try {
       const matchedJob = jobs.find(j => j.id === jobId) || jobs[0];
 
       // Calculate match percentage dynamically
-      const { percentage, category, analysis } = await calculateMatchPercentage(resumeText, matchedJob);
+      const { percentage, category, analysis } = await calculateMatchPercentage(resumeText, matchedJob, file);
 
       const newApp: Application = {
         id: `app-${Date.now()}`,

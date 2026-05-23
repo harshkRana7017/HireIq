@@ -6,7 +6,7 @@ interface ResumeUploadProps {
     fileName: string,
     rawText: string,
     file?: File
-  ) => void;
+  ) => Promise<void> | void;
   id?: string;
 }
 
@@ -143,20 +143,22 @@ export const ResumeUpload: React.FC<ResumeUploadProps> = ({
     presetFileName?: string
   ) => {
     console.log(file, "fille")
+    const actualFile = file;
     setTimeout(() => {
+      console.log(file, "fille 2")
       setUploadState('completed');
 
       onUploadSuccess(
-        file?.name ||
+        actualFile?.name ||
         presetFileName ||
         currentFile?.name ||
         'resume.pdf',
 
         text ||
-        `Raw text content of ${file?.name || 'resume'
+        `Raw text content of ${actualFile?.name || 'resume'
         }. Expert React developer skilled in Tailwind CSS, TypeScript, and local layouts.`,
 
-        file
+        actualFile
       );
     }, 1400);
   };

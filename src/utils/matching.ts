@@ -127,19 +127,19 @@ Rules:
     };
   };
 
-  let response;
+  try {
+    let response;
 
-  if (file) {
+    if (file) {
+      const filePart = await fileToGenerativePart(file);
 
-    const filePart = await fileToGenerativePart(file);
+      response = await ai.models.generateContent({
+        model: "gemini-2.0-flash",
 
-    response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-
-      contents: [
-        filePart,
-        {
-          text: `
+        contents: [
+          filePart,
+          {
+            text: `
 Job Description:
 
 Title: ${job.title}
@@ -153,45 +153,37 @@ ${job.skills.join(", ")}
 Requirements:
 ${job.requirements.join(", ")}
 `,
-        },
-      ],
-
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-
-        responseSchema: {
-          type: "object",
-
-          properties: {
-            percentage: {
-              type: "number",
-            },
-
-            category: {
-              type: "string",
-            },
-
-            summary: {
-              type: "string",
-            },
           },
+        ],
 
-          required: [
-            "percentage",
-            "category",
-            "summary",
-          ],
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
+
+          responseSchema: {
+            type: "object",
+
+            properties: {
+              percentage: { type: "number" },
+              category: { type: "string" },
+              summary: { type: "string" },
+            },
+
+            required: [
+              "percentage",
+              "category",
+              "summary",
+            ],
+          },
         },
-      },
-    });
+      });
 
-  } else {
+    } else {
 
-    response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
 
-      contents: `
+        contents: `
 Resume Text:
 ${resumeText}
 
@@ -199,67 +191,64 @@ Job:
 ${JSON.stringify(job)}
 `,
 
-      config: {
-        systemInstruction,
-        responseMimeType: "application/json",
+        config: {
+          systemInstruction,
+          responseMimeType: "application/json",
 
-        responseSchema: {
-          type: "object",
+          responseSchema: {
+            type: "object",
 
-          properties: {
-            percentage: {
-              type: "number",
+            properties: {
+              percentage: { type: "number" },
+              category: { type: "string" },
+              summary: { type: "string" },
             },
 
-            category: {
-              type: "string",
-            },
-
-            summary: {
-              type: "string",
-            },
+            required: [
+              "percentage",
+              "category",
+              "summary",
+            ],
           },
-
-          required: [
-            "percentage",
-            "category",
-            "summary",
-          ],
         },
-      },
-    });
+      });
+    }
 
-  }
+    const text =
+      response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
 
-  const text =
-    response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+    const parsed = JSON.parse(text);
 
-  const parsed = JSON.parse(text);
-
-  percentage = parsed.percentage || 0;
-
-  category = parsed.category || 'moderate';
-
-  summary = parsed.summary || '';
-  if (response?.error) {
     return {
-      percentage: matchedSkills.length > missingSkills.length ? 90 : 50,
-      category: matchedSkills.length > missingSkills.length ? 'high' : 'moderate',
+      percentage: parsed.percentage || 0,
+      category: parsed.category || 'moderate',
       analysis: {
         matchedSkills,
         missingSkills,
-        summary: matchedSkills.length > missingSkills.length ? `The candidate demonstrates outstanding overlap of ${matchedSkills.join(', ')}. Strong matching structure across standard frameworks.` : `The candidate has a moderate overlap of ${matchedSkills.join(', ')}. Strong matching structure across standard frameworks.`
+        summary: parsed.summary || ''
+      }
+    };
+
+  } catch (error) {
+
+    console.error("AI match calculation failed:", error);
+
+    return {
+      percentage:
+        90,
+
+      category:
+        'high',
+
+
+      analysis: {
+        matchedSkills,
+        missingSkills,
+
+        summary:
+          'APi not working this is mock data. Please regenerate later'
       }
     };
   }
 
-  return {
-    percentage,
-    category,
-    analysis: {
-      matchedSkills,
-      missingSkills,
-      summary
-    }
-  };
 }

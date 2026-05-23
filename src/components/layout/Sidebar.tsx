@@ -4,14 +4,9 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Briefcase,
   Users,
-  Settings,
   Shield,
-  FileText,
-  TrendingUp,
-  Key,
-  FolderOpen,
   Send,
-  HelpCircle
+  Plug
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -33,6 +28,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, id })
   const adminNav = [
     { id: 'jobs', label: 'Job Postings', icon: Briefcase, count: jobs.length },
     { id: 'applicants', label: 'Candidates CRM', icon: Users, count: applications.length },
+    { id: 'integrations', label: 'Integrations', icon: Plug, count: 0 },
   ];
 
   const candidateNav = [

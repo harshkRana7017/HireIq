@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
         OPENAI_API_KEY: env.OPENAI_API_KEY || env.OPEN_AI_API_KEY || '',
       },
       'import.meta.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || ''),
+      'import.meta.env.GOOGLE_CLIENT_ID': JSON.stringify(env.GOOGLE_CLIENT_ID || ''),
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

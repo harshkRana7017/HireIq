@@ -8,6 +8,13 @@ export interface User {
   avatarUrl?: string;
 }
 
+export interface GoogleUser {
+  name: string;
+  email: string;
+  picture?: string;
+  accessToken?: string;
+}
+
 export interface Job {
   id: string;
   title: string;
@@ -41,7 +48,9 @@ export interface Application {
   matchAnalysis: MatchAnalysis;
   appliedDate: string;
   status: 'New' | 'Reviewing' | 'Interviewing' | 'Accepted' | 'Declined';
-
+  interviewDate?: string;
+  interviewTimeSlot?: string;
+  meetLink?: string;
 }
 
 export interface DashboardStats {

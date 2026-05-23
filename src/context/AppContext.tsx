@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Job, Application, User, UserRole, DashboardStats } from '../types';
+import { Job, Application, User, UserRole, DashboardStats, GoogleUser } from '../types';
 import { initialJobs, initialApplications } from '../data/mockData';
 import { calculateMatchPercentage } from '../utils/matching';
 
@@ -19,16 +19,39 @@ interface AppContextType {
     resumeFileName: string,
     resumeText: string,
     file?: File,
-  ) => Application;
+  ) => Promise<Application>;
   updateApplicationStatus: (appId: string, status: Application['status']) => void;
   deleteJob: (jobId: string) => void;
-
+  googleUser: GoogleUser | null;
+  connectGoogle: (user: GoogleUser) => void;
+  disconnectGoogle: () => void;
+  scheduleInterview: (appId: string, date: string, timeSlot: string, meetLink: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [analyzing, setAnalyzing] = useState(false);
+  const [googleUser, setGoogleUser] = useState<GoogleUser | null>(() => {
+    const saved = localStorage.getItem('recruit_google_user');
+    return saved ? JSON.parse(saved) : null;
+  });
+
+  useEffect(() => {
+    if (googleUser) {
+      localStorage.setItem('recruit_google_user', JSON.stringify(googleUser));
+    } else {
+      localStorage.removeItem('recruit_google_user');
+    }
+  }, [googleUser]);
+
+  const connectGoogle = (user: GoogleUser) => {
+    setGoogleUser(user);
+  };
+
+  const disconnectGoogle = () => {
+    setGoogleUser(null);
+  };
   // Initialize from LocalStorage or fallback to mocks
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('recruit_user');
@@ -167,6 +190,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setApplications(prev => prev.filter(app => app.jobId !== jobId));
   };
 
+  const scheduleInterview = (appId: string, date: string, timeSlot: string, meetLink: string) => {
+    setApplications(prev =>
+      prev.map(app =>
+        app.id === appId
+          ? {
+              ...app,
+              interviewDate: date,
+              interviewTimeSlot: timeSlot,
+              meetLink,
+              status: 'Interviewing'
+            }
+          : app
+      )
+    );
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -181,6 +220,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addApplication,
         updateApplicationStatus,
         deleteJob,
+        googleUser,
+        connectGoogle,
+        disconnectGoogle,
+        scheduleInterview,
       }}
     >
       {children}

@@ -26,7 +26,8 @@ import {
   Mail,
   CloudLightning,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  ExternalLink
 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 
@@ -58,6 +59,7 @@ export const AdminDashboard: React.FC = () => {
 
   // Google OAuth flow setup
   const handleGoogleLogin = useGoogleLogin({
+    scope: 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events',
     onSuccess: async (tokenResponse) => {
       setIsConnecting(true);
       setErrorMessage(null);

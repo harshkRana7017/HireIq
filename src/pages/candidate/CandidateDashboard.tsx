@@ -19,7 +19,9 @@ import {
   AlertCircle,
   Clock,
   ExternalLink,
-  ChevronRight
+  ChevronRight,
+  RefreshCw,
+  Sparkles
 } from 'lucide-react';
 
 export const CandidateDashboard: React.FC = () => {
@@ -40,6 +42,7 @@ export const CandidateDashboard: React.FC = () => {
   const [selectedTimeSlot, setSelectedTimeSlot] = useState('09:00 AM - 10:00 AM');
   const [isScheduling, setIsScheduling] = useState(false);
   const [showCalendarSection, setShowCalendarSection] = useState<string | null>(null);
+  const [schedulingError, setSchedulingError] = useState<string | null>(null);
 
   const TIME_SLOTS = [
     '09:00 AM - 10:00 AM',
@@ -50,6 +53,7 @@ export const CandidateDashboard: React.FC = () => {
 
   const handleScheduleMeet = async (appId: string, candidateName: string, candidateEmail: string, jobTitle: string) => {
     setIsScheduling(true);
+    setSchedulingError(null);
     try {
       let meetLink = '';
       
@@ -64,57 +68,58 @@ export const CandidateDashboard: React.FC = () => {
       const endIso = `${selectedDate}T${pad(hours + 1)}:${pad(minutes)}:00`;
 
       if (googleUser && googleUser.accessToken) {
-        try {
-          const event = {
-            summary: `Interview: ${candidateName} <> ${jobTitle}`,
-            description: `HireIq Platform Automated Google Calendar Invitation.\nAI Fit Score matched above 80%!\n\nCandidate Email: ${candidateEmail}`,
-            start: {
-              dateTime: startIso,
-              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            },
-            end: {
-              dateTime: endIso,
-              timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-            },
-            attendees: [
-              { email: candidateEmail },
-              { email: googleUser.email }
-            ],
-            conferenceData: {
-              createRequest: {
-                requestId: `meet-${Date.now()}`,
-                conferenceSolutionKey: {
-                  type: 'hangoutsMeet'
-                }
+        const event = {
+          summary: `Interview: ${candidateName} <> ${jobTitle}`,
+          description: `HireIq Platform Automated Google Calendar Invitation.\nAI Fit Score matched above 80%!\n\nCandidate Email: ${candidateEmail}`,
+          start: {
+            dateTime: startIso,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
+          end: {
+            dateTime: endIso,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
+          attendees: [
+            { email: candidateEmail },
+            { email: googleUser.email }
+          ],
+          conferenceData: {
+            createRequest: {
+              requestId: `meet-${Date.now()}`,
+              conferenceSolutionKey: {
+                type: 'hangoutsMeet'
               }
             }
-          };
-
-          const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${googleUser.accessToken}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(event)
-          });
-          
-          if (res.ok) {
-            const data = await res.json();
-            meetLink = data.hangoutLink || '';
           }
-        } catch (apiErr) {
-          console.warn('Real Google Calendar API call failed:', apiErr);
+        };
+
+        const res = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${googleUser.accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(event)
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          meetLink = data.hangoutLink || '';
+        } else {
+          const errorData = await res.json().catch(() => ({}));
+          let errMsg = errorData.error?.message || `Google Calendar API returned status ${res.status}`;
+          if (res.status === 403 || errMsg.toLowerCase().includes('scope') || errMsg.toLowerCase().includes('permission')) {
+            errMsg = "Insufficient Calendar Permissions. The recruiter must go to the Admin dashboard's 'Integrations' tab, click 'Disconnect Integration', and then reconnect their Google account to authorize the newly added Google Calendar write scopes.";
+          }
+          throw new Error(errMsg);
         }
-      }
-      
-      if (!meetLink) {
+      } else {
         const randomCode1 = Math.random().toString(36).substring(2, 5);
         const randomCode2 = Math.random().toString(36).substring(2, 6);
         const randomCode3 = Math.random().toString(36).substring(2, 5);
         meetLink = `https://meet.google.com/${randomCode1}-${randomCode2}-${randomCode3}`;
       }
-      
+
       scheduleInterview(appId, selectedDate, selectedTimeSlot, meetLink);
       
       if (submissionCompleted && submissionCompleted.id === appId) {
@@ -125,8 +130,9 @@ export const CandidateDashboard: React.FC = () => {
           meetLink
         } : null);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error scheduling interview:', err);
+      setSchedulingError(err.message || 'An unexpected error occurred while scheduling the calendar meet.');
     } finally {
       setIsScheduling(false);
     }
@@ -329,7 +335,7 @@ export const CandidateDashboard: React.FC = () => {
                 </div>
                 <MatchBadge percentage={submissionCompleted.matchPercentage} />
               </div>
-              
+
               <div className="text-xs text-zinc-400 leading-relaxed text-left bg-zinc-950 p-3.5 rounded-xl border border-zinc-805">
                 <strong className="text-zinc-250 font-bold block mb-1">AI Match Summary:</strong>
                 {submissionCompleted.matchAnalysis.summary}
@@ -360,7 +366,7 @@ export const CandidateDashboard: React.FC = () => {
                           Time Slot: <strong className="text-zinc-200">{submissionCompleted.interviewTimeSlot}</strong>
                         </p>
                         <p className="text-zinc-400 flex items-center gap-1.5">
-                          Meet Link: 
+                          Meet Link:
                           <a
                             href={submissionCompleted.meetLink}
                             target="_blank"
@@ -415,11 +421,10 @@ export const CandidateDashboard: React.FC = () => {
                                 key={slot}
                                 type="button"
                                 onClick={() => setSelectedTimeSlot(slot)}
-                                className={`text-[10px] font-semibold py-1.5 px-3 rounded-lg border text-center transition-all ${
-                                  selectedTimeSlot === slot
+                                className={`text-[10px] font-semibold py-1.5 px-3 rounded-lg border text-center transition-all ${selectedTimeSlot === slot
                                     ? 'bg-indigo-600/10 border-indigo-500 text-indigo-300 font-bold'
                                     : 'bg-[#090d16] border-zinc-800 text-zinc-400 hover:border-zinc-700'
-                                }`}
+                                  }`}
                               >
                                 {slot}
                               </button>
@@ -427,6 +432,16 @@ export const CandidateDashboard: React.FC = () => {
                           </div>
                         </div>
                       </div>
+
+                      {schedulingError && (
+                        <div className="p-3 text-[11px] text-red-400 bg-red-500/5 border border-red-500/10 rounded-xl leading-relaxed flex items-start gap-1.5">
+                          <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                          <div>
+                            <strong className="font-bold block">Scheduling API Error:</strong>
+                            <span className="text-zinc-400">{schedulingError}</span>
+                          </div>
+                        </div>
+                      )}
 
                       <button
                         type="button"
@@ -529,12 +544,12 @@ export const CandidateDashboard: React.FC = () => {
                             {app.status === 'Interviewing' && !app.interviewDate
                               ? "Excellent profile scorecard! The recruiter team has selected your credentials and invited you to a video diagnostic session."
                               : app.status === 'Interviewing' && app.interviewDate
-                              ? `Your Google Calendar invite is registered. Recruiter Harsh Rana has synced details for a Meet conference.`
-                              : app.status === 'Accepted'
-                                ? "Congratulations! You have received a formal hire offer. Look out for welcome packages forwarded to your email."
-                                : app.status === 'Declined'
-                                  ? "Thank you for participating in our match diagnostic. The requirements for this specific role have been satisfied by alternative profiles."
-                                  : "Document parser has matched your skill points. Your resume is placed in queue awaiting recruiter screener audits."}
+                                ? `Your Google Calendar invite is registered. Recruiter Harsh Rana has synced details for a Meet conference.`
+                                : app.status === 'Accepted'
+                                  ? "Congratulations! You have received a formal hire offer. Look out for welcome packages forwarded to your email."
+                                  : app.status === 'Declined'
+                                    ? "Thank you for participating in our match diagnostic. The requirements for this specific role have been satisfied by alternative profiles."
+                                    : "Document parser has matched your skill points. Your resume is placed in queue awaiting recruiter screener audits."}
                           </p>
                         </div>
 
@@ -590,6 +605,17 @@ export const CandidateDashboard: React.FC = () => {
                                     </select>
                                   </div>
                                 </div>
+
+                                {schedulingError && (
+                                  <div className="p-3 text-[11px] text-red-400 bg-red-500/5 border border-red-500/10 rounded-xl leading-relaxed flex items-start gap-1.5">
+                                    <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                      <strong className="font-bold block">Scheduling API Error:</strong>
+                                      <span className="text-zinc-400">{schedulingError}</span>
+                                    </div>
+                                  </div>
+                                )}
+
                                 <div className="flex gap-2 justify-end pt-1">
                                   <button
                                     type="button"

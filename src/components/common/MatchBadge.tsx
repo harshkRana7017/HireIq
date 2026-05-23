@@ -1,3 +1,4 @@
+import { div } from 'motion/react-client';
 import React from 'react';
 
 interface MatchBadgeProps {
@@ -25,6 +26,7 @@ export const MatchBadge: React.FC<MatchBadgeProps> = ({ percentage, id }) => {
   }
 
   return (
+
     <span
       id={id || `match-badge-${percentage}`}
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${bgClass} ${textClass}`}
@@ -32,5 +34,6 @@ export const MatchBadge: React.FC<MatchBadgeProps> = ({ percentage, id }) => {
       <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse md:inline-block" />
       {label} ({percentage}%)
     </span>
+
   );
 };

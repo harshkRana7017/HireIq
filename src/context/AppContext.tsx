@@ -17,10 +17,12 @@ interface AppContextType {
     candidateName: string,
     candidateEmail: string,
     resumeFileName: string,
-    resumeText: string
+    resumeText: string,
+    file: File,
   ) => Application;
   updateApplicationStatus: (appId: string, status: Application['status']) => void;
   deleteJob: (jobId: string) => void;
+
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);

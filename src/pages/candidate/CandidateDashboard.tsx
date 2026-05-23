@@ -23,11 +23,11 @@ import {
 } from 'lucide-react';
 
 export const CandidateDashboard: React.FC = () => {
-  const { jobs, applications, currentUser, addApplication } = useAppState();
+  const { jobs, applications, currentUser, addApplication, analyzing } = useAppState();
 
   const [activeTab, setActiveTab] = useState('explore'); // 'explore' | 'my-applications'
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  
+
   // Application process status
   const [submissionCompleted, setSubmissionCompleted] = useState<Application | null>(null);
 
@@ -36,11 +36,11 @@ export const CandidateDashboard: React.FC = () => {
   // Filter applications submitted by current logged-in user
   const myApplications = applications.filter(app => app.candidateEmail === currentUser.email);
 
-  const handleResumeMatchComplete = (fileName: string, rawText: string) => {
+  const handleResumeMatchComplete = async (fileName: string, rawText: string) => {
     if (!selectedJob) return;
 
     // Trigger application context logic which calculates match indexes immediately
-    const newlyCreatedApp = addApplication(
+    const newlyCreatedApp = await addApplication(
       selectedJob.id,
       currentUser.name,
       currentUser.email,
@@ -171,6 +171,30 @@ export const CandidateDashboard: React.FC = () => {
 
               {/* Right Column: Upload Resume Module */}
               <div className="lg:col-span-1 space-y-3">
+                {analyzing && (
+                  <div className="relative overflow-hidden rounded-2xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/10 via-violet-500/5 to-transparent p-4 backdrop-blur-sm">
+
+                    <div className="absolute inset-0 opacity-20">
+                      <div className="h-full w-full animate-pulse bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+                    </div>
+
+                    <div className="relative flex items-center gap-3">
+
+                      <div className="h-5 w-5 rounded-full border-2 border-indigo-400 border-t-transparent animate-spin" />
+
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-indigo-100">
+                          AI is analyzing the resume...
+                        </p>
+
+                        <p className="text-xs text-zinc-400">
+                          Matching skills, experience, and role relevance.
+                        </p>
+                      </div>
+
+                    </div>
+                  </div>
+                )}
                 <span className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest block pl-0.5">
                   Submit CV For Analysis
                 </span>
@@ -239,7 +263,7 @@ export const CandidateDashboard: React.FC = () => {
               <div className="grid grid-cols-1 gap-4">
                 {myApplications.map(app => {
                   const job = getJobDetails(app.jobId);
-                  
+
                   return (
                     <div
                       key={app.id}
@@ -273,10 +297,10 @@ export const CandidateDashboard: React.FC = () => {
                             {app.status === 'Interviewing'
                               ? "Excellent profile scorecard! The recruiter team has selected your credentials and invited you to a video diagnostic session."
                               : app.status === 'Accepted'
-                              ? "Congratulations! You have received a formal hire offer. Look out for welcome packages forwarded to your email."
-                              : app.status === 'Declined'
-                              ? "Thank you for participating in our match diagnostic. The requirements for this specific role have been satisfied by alternative profiles."
-                              : "Document parser has matched your skill points. Your resume is placed in queue awaiting recruiter screener audits."}
+                                ? "Congratulations! You have received a formal hire offer. Look out for welcome packages forwarded to your email."
+                                : app.status === 'Declined'
+                                  ? "Thank you for participating in our match diagnostic. The requirements for this specific role have been satisfied by alternative profiles."
+                                  : "Document parser has matched your skill points. Your resume is placed in queue awaiting recruiter screener audits."}
                           </p>
                         </div>
                       </div>
@@ -284,7 +308,7 @@ export const CandidateDashboard: React.FC = () => {
                       {/* Matching details & Badge indicators */}
                       <div className="flex flex-row md:flex-col items-center md:items-end justify-between md:justify-center gap-3 border-t md:border-t-0 border-slate-100 pt-2.5 md:pt-0">
                         <MatchBadge percentage={app.matchPercentage} />
-                        
+
                         <div className="flex items-center gap-1 text-[11px]">
                           {app.status === 'Interviewing' ? (
                             <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-0.5 bg-indigo-50 dark:bg-indigo-950/40 px-2 py-0.5 rounded">

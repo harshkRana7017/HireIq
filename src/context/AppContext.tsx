@@ -11,6 +11,7 @@ interface AppContextType {
   login: (name: string, email: string, role: UserRole) => void;
   logout: () => void;
   addJob: (jobData: Omit<Job, 'id' | 'applicantsCount' | 'isOpen' | 'createdAt'>) => void;
+  analyzing: boolean;
   addApplication: (
     jobId: string,
     candidateName: string,
@@ -25,9 +26,11 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [analyzing, setAnalyzing] = useState(false);
   // Initialize from LocalStorage or fallback to mocks
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('recruit_user');
+
     return saved ? JSON.parse(saved) : null;
   });
 
@@ -65,6 +68,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const totalJobs = jobs.length;
     const totalApplications = applications.length;
+
 
     const totalMatchRate = applications.reduce((sum, app) => sum + app.matchPercentage, 0);
     const averageMatchRate = totalApplications > 0 ? Math.round(totalMatchRate / totalApplications) : 0;
@@ -112,35 +116,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     resumeFileName: string,
     resumeText: string
   ): Promise<Application> => {
-    const matchedJob = jobs.find(j => j.id === jobId) || jobs[0];
+    setAnalyzing(true);
+    try {
+      const matchedJob = jobs.find(j => j.id === jobId) || jobs[0];
 
-    // Calculate match percentage dynamically
-    const { percentage, category, analysis } = await calculateMatchPercentage(resumeText, matchedJob);
+      // Calculate match percentage dynamically
+      const { percentage, category, analysis } = await calculateMatchPercentage(resumeText, matchedJob);
 
-    const newApp: Application = {
-      id: `app-${Date.now()}`,
-      jobId,
-      candidateName,
-      candidateEmail,
-      resumeFileName,
-      resumeText,
-      matchPercentage: percentage,
-      matchCategory: category,
-      matchAnalysis: analysis,
-      appliedDate: new Date().toISOString().split('T')[0],
-      status: 'New'
-    };
+      const newApp: Application = {
+        id: `app-${Date.now()}`,
+        jobId,
+        candidateName,
+        candidateEmail,
+        resumeFileName,
+        resumeText,
+        matchPercentage: percentage,
+        matchCategory: category,
+        matchAnalysis: analysis,
+        appliedDate: new Date().toISOString().split('T')[0],
+        status: 'New'
+      };
 
-    setApplications(prev => [newApp, ...prev]);
+      setApplications(prev => [newApp, ...prev]);
 
-    // Increment applicantsCount for that job
-    setJobs(prevJobs =>
-      prevJobs.map(job =>
-        job.id === jobId ? { ...job, applicantsCount: job.applicantsCount + 1 } : job
-      )
-    );
+      // Increment applicantsCount for that job
+      setJobs(prevJobs =>
+        prevJobs.map(job =>
+          job.id === jobId ? { ...job, applicantsCount: job.applicantsCount + 1 } : job
+        )
+      );
 
-    return newApp;
+      return newApp
+    }
+    finally {
+      setAnalyzing(false)
+    }
   };
 
   const updateApplicationStatus = (appId: string, status: Application['status']) => {
@@ -164,6 +174,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         logout,
         addJob,
+        analyzing,
         addApplication,
         updateApplicationStatus,
         deleteJob,

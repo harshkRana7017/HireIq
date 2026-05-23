@@ -1,5 +1,5 @@
 import { MatchAnalysis, Job } from '../types';
-import OpenAI from "openai";
+import ai from './ai';
 
 /**
  * Normalizes text to help with simple keyword matching
@@ -11,10 +11,6 @@ function cleanText(text: string): string[] {
     .split(/\s+/)
     .filter(word => word.length > 2);
 }
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 
 
@@ -30,6 +26,7 @@ export async function calculateMatchPercentage(
   category: 'low' | 'moderate' | 'high';
   analysis: MatchAnalysis;
 }> {
+  console.log(resumeText, process.env.OPENAI_API_KEY, "here");
   // If resume text is empty, fall back to safe placeholder defaults (e.g. 90% as requested)
   if (!resumeText || resumeText.trim().length === 0) {
     const halfLen = Math.ceil(job.skills.length / 2);
@@ -70,19 +67,37 @@ export async function calculateMatchPercentage(
   let percentage = 0;
   let category: 'low' | 'moderate' | 'high' = 'moderate';
   let summary = '';
-  const analysis = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: "Analyze this resume against the job description. Return a JSON with keys: percentage, category, summary. the category can only be 'low'- if percentage less that 50, 'moderate'- if percentage between 50 and 80, or 'high'- if percentage greater than 80"
-      },
-      { role: "user", content: `Resume: ${resumeText}\n\nJob: ${JSON.stringify(job)}` }
-    ]
+  const systemInstruction = `Analyze this resume against the job description. Return a JSON with keys: percentage, category, summary. The category can only be 'low'- if percentage is less than 50, 'moderate'- if percentage is between 50 and 80, or 'high'- if percentage is greater than 80.`;
+  const contents = `Resume: ${resumeText}
+Job: ${JSON.stringify(job)}
+  `
+  console.log(contents, "contents")
+  const response = await ai.models.generateContent({
+    model: "gemini-2.5-flash",
+    contents: contents,
+    config: {
+      systemInstruction,
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "object",
+        properties: {
+          percentage: { type: "number" },
+          category: { type: "string" },
+          summary: { type: "string" }
+        }
+      }
+    }
   });
-  percentage = JSON.parse(analysis.choices[0].message.content || '{}').percentage;
-  category = JSON.parse(analysis.choices[0].message.content || '{}').category;
-  summary = JSON.parse(analysis.choices[0].message.content || '{}').summary;
+
+  const text =
+    response.candidates?.[0]?.content?.parts?.[0]?.text || '{}';
+
+  const parsed = JSON.parse(text);
+
+  percentage = parsed.percentage || 0;
+  category = parsed.category || 'moderate';
+  summary = parsed.summary || '';
+
   console.log(percentage, category, summary, "demo");
   return {
     percentage,

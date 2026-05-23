@@ -30,7 +30,7 @@ export async function calculateMatchPercentage(
   console.log(file, 'file');
 
   // If resume text is empty, fall back to safe placeholder defaults (e.g. 90% as requested)
-  if (true) {
+  if (!resumeText || resumeText.trim().length === 0) {
     const halfLen = Math.ceil(job.skills.length / 2);
     const matchedSkills = job.skills.slice(0, halfLen);
     const missingSkills = job.skills.slice(halfLen);
@@ -70,23 +70,42 @@ export async function calculateMatchPercentage(
   let category: 'low' | 'moderate' | 'high' = 'moderate';
   let summary = '';
   const systemInstruction = `
-Analyze the uploaded resume file against the provided job description.
+  You are an experienced hiring manager and company owner evaluating candidates for a real-world hiring decision.
 
-Return ONLY valid JSON.
+Analyze the uploaded resume against the provided job description carefully and realistically.
 
-Rules:
-- percentage must be between 0-100
-- category must ONLY be:
-  "low" if percentage < 50
-  "moderate" if percentage is between 50-80
-  "high" if percentage > 80
+Your goal is to identify strong potential candidates without being overly strict, while also avoiding weak or clearly mismatched applicants.
 
-Response format:
+Evaluation Guidelines:
+- Be slightly lenient toward candidates who show strong fundamentals, transferable skills, growth potential, or relevant project experience.
+- Do NOT reject candidates simply because they are missing a few minor tools or keywords.
+- However, do NOT overrate candidates who lack the core skills, domain understanding, or practical experience required for the role.
+- Focus on actual alignment with the responsibilities and expectations of the role.
+- Consider practical experience, technologies used, problem-solving ability, seniority, project complexity, and overall fit.
+- Penalize resumes that appear generic, irrelevant, or heavily mismatched.
+- Reward candidates who demonstrate real ownership, impactful work, adaptability, or strong learning ability.
+
+Return ONLY valid JSON in the following structure:
+
 {
   "percentage": number,
   "category": "low" | "moderate" | "high",
-  "summary": string
+  "summary": "Short professional evaluation of the candidate",
+  "strengths": ["strength1", "strength2"],
+  "concerns": ["concern1", "concern2"],
+  "decision": "Reject" | "Consider" | "Shortlist" | "Strong Shortlist"
 }
+
+Scoring Rules:
+- 0–49 → low
+- 50–79 → moderate
+- 80–100 → high
+
+Additional Guidance:
+- Only give scores above 85 if the candidate is genuinely strong for the role.
+- Scores between 65–80 should represent decent but imperfect matches.
+- Keep summaries concise, professional, and realistic.
+- Avoid hallucinating experience not present in the resume.
 `;
 
   const fileToGenerativePart = async (file: File) => {

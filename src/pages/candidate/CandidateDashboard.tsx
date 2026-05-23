@@ -222,9 +222,12 @@ export const CandidateDashboard: React.FC = () => {
                 <div className="text-left">
                   <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">Candidate Evaluation</span>
                   <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{currentUser.name}</span>
+
                 </div>
                 <MatchBadge percentage={submissionCompleted.matchPercentage} />
               </div>
+              <span className="text-xs font-bold text-zinc-700 dark:text-zinc-300">{submissionCompleted.matchAnalysis.summary}</span>
+
 
               <div className="pt-3 border-t border-zinc-50 flex justify-end gap-3.5">
                 <button
